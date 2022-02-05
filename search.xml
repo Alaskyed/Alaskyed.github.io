@@ -181,30 +181,9 @@
       
       <categories>
           
-          <category> databases </category>
+          <category> Databases </category>
           
-          <category> mysql </category>
-          
-      </categories>
-      
-      
-    </entry>
-    
-    
-    
-    <entry>
-      <title>MySQL高级(5) 执行计划</title>
-      <link href="/2022/02/04/databases/mysql-advanced/5-Explain/"/>
-      <url>/2022/02/04/databases/mysql-advanced/5-Explain/</url>
-      
-        <content type="html"><![CDATA[<h1 id="Explain-执行计划"><a href="#Explain-执行计划" class="headerlink" title="Explain (执行计划)"></a>Explain (执行计划)</h1><h2 id="执行计划介绍"><a href="#执行计划介绍" class="headerlink" title="执行计划介绍"></a>执行计划介绍</h2><p><strong>概念</strong></p><p>使用EXPLAIN关键字可以模拟优化器执行SQL查询语句，从而知道MySQL是如何处理你的SQL语句的。从而分析你的查询语句或是表结构的性能瓶颈</p><p><strong>作用(Explain能查询什么)</strong></p><p>对于一张表,我们是不是应该建立索引呢,一般来说我们需要了解整个SQL语句的执行过程,然后根据实际情况来判断是否要建立索引,<code>Explain</code>指令可以帮助我们来查看SQL语句的执行计划(就是SQL语句是怎么执行的),Explain指令可以:</p><ol><li>表的读取顺序 </li><li>可以使用的索引</li><li>数据读取操作的操作类型</li><li>哪些索引被实际使用</li><li>表之间的引用</li><li>每张表有多少行被物理查询</li></ol><h2 id="Explain的使用"><a href="#Explain的使用" class="headerlink" title="Explain的使用"></a>Explain的使用</h2><p><strong>语法</strong></p><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">explain</span><br><span class="line">&lt;SQL语句&gt;</span><br></pre></td></tr></table></figure><h2 id="Explain结果各个字段的含义和说明"><a href="#Explain结果各个字段的含义和说明" class="headerlink" title="Explain结果各个字段的含义和说明"></a>Explain结果各个字段的含义和说明</h2><p>执行一个SQL语句,发现输出的内容有以下字段:</p><table><thead><tr><th></th><th></th></tr></thead><tbody><tr><td>&#x3D;&#x3D;id&#x3D;&#x3D;</td><td>select查询的序列号,包含一组数字,表示查询中执行select自居或操作表的顺序</td></tr><tr><td>select_type</td><td>查询类型</td></tr><tr><td>table</td><td>说明这一行数据是关于哪张表的</td></tr><tr><td>&#x3D;&#x3D;type&#x3D;&#x3D;</td><td>访问类型</td></tr><tr><td>partitions</td><td>分区表中的命中情况, 不是分区表时, 该项为null</td></tr><tr><td>key</td><td>实际使用的索引, 如果为<code>null</code>, 则没有使用索引</td></tr><tr><td>key_len</td><td>表示索引中使用的字节数</td></tr><tr><td>&#x3D;&#x3D;rows&#x3D;&#x3D;</td><td>执行SQL语句实际扫描的行数, 越小越好</td></tr><tr><td>ref</td><td>显示索引的哪一行被使用了</td></tr><tr><td>filtered</td><td>表示存储引擎返回的数据在server层过滤后, 剩下多少满足查询的记录数量的比例(百分比)</td></tr><tr><td>&#x3D;&#x3D;extra&#x3D;</td><td>附加的其他信息</td></tr></tbody></table><h3 id="id-可以看做权重-权重越大的表-越先读取-权重一样就按顺序执行"><a href="#id-可以看做权重-权重越大的表-越先读取-权重一样就按顺序执行" class="headerlink" title="id (可以看做权重,权重越大的表,越先读取,权重一样就按顺序执行)"></a>id (可以看做权重,权重越大的表,越先读取,权重一样就按顺序执行)</h3><ol><li>如果id相同,从上到下执行</li></ol><p><strong>举例</strong></p><blockquote><p>有t1,t2,t3三张表,执行某次次关联查询的explain结果如下<br><img src="/MySQL%E9%AB%98%E7%BA%A7(2).assets/image-20200214192140752.png" alt="image-20200214192140752"> </p><p>那么表的读取顺序就是 t1-&gt;t3-&gt;t2</p></blockquote><ol start="2"><li>如果id不同,先执行id大的,再执行小的,一般来说,有子查询的SQL语句会先执行子查询,所以子查询的id值会大</li></ol><p><strong>举例</strong></p><blockquote><p>同上,某次执行结果如下:<br><img src="/MySQL%E9%AB%98%E7%BA%A7(2).assets/image-20200214192547243.png" alt="image-20200214192547243"></p><p>那么表的读取顺序是 t3-&gt;t1-&gt;t2</p></blockquote><ol start="3"><li>如果既有id一样的又有不一样的,先按照id从大到小执行,然后再按照顺序从上到下执行</li></ol><p><strong>举例</strong></p><blockquote><p>同上,某次执行结果如下:</p><p><img src="/MySQL%E9%AB%98%E7%BA%A7(2).assets/image-20200214193158599.png" alt="image-20200214193158599"></p><p>表的读取顺序是: t3-&gt;derived2-&gt;t2,其中derived2是衍生表,下面<code>select_type</code>中会介绍到</p></blockquote><p><strong>注意</strong></p><blockquote><ol><li>相同id值的表,读取顺序不一定按照表的书写顺序来读取,就比如第一个举例中,表的书写顺序是<code>select * from t1 innerjoin t2 inner join t3</code>,但是实际读取的顺序是 t1-&gt;t3-&gt;t2</li><li>id号每个号码表示一次独立的查询,一个SQL的查询次数越少越好</li></ol></blockquote><h2 id="select-type"><a href="#select-type" class="headerlink" title="select_type"></a>select_type</h2><ul><li>SIMPLE 简单查询</li></ul><p>简单的select查询,查询中不包含子查询或者UNION</p><ul><li>PRIMARY 主要查询</li></ul><p>查询中若包含任何子查询部分，最外层查询则被标记为PRIMARY ,一般来说PRIMARY 是最后加载的那个</p><ul><li>DERIVED 衍生查询</li></ul><p>在<code>FROM</code>后面包含的子查询被标记为DEPENDENT (衍生表),说白了就是一个临时表 </p><ul><li>SUBQUERY 子查询</li></ul><p>在<code>SELECT</code>或<code>WHERE</code>列表中包含了子查询, 但是WHERE条件是等于</p><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">explain select t1.id from t1</span><br><span class="line">where t1.id=</span><br><span class="line">(</span><br><span class="line">select t2.id from t2 where t2.name=&quot;小明&quot;</span><br><span class="line">)</span><br></pre></td></tr></table></figure><ul><li>DEPENDENT SUBQUERY 依赖子查询</li></ul><p>在<code>SELECT</code>或<code>WHERE</code>列表中包含了子查询, 但是WHERE条件是</p><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">explain select t1.id from t1</span><br><span class="line">where t1.id in</span><br><span class="line">(</span><br><span class="line">select t2.id from t2 where t2.name=&quot;小明&quot;</span><br><span class="line">)</span><br></pre></td></tr></table></figure><ul><li>UNCACHEABLE SUBQUERY 不可用缓存的子查询</li></ul><p>表示当前子查询不使用缓存, 比如当前SQL语句中有sql变量, 就不使用缓存</p><p><strong>举例</strong></p><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">explain select * </span><br><span class="line">from t1 </span><br><span class="line">where id = (</span><br><span class="line">    select id from t2 where t2.id=@@sort_buffer_size</span><br><span class="line">);</span><br></pre></td></tr></table></figure><ul><li>UNION</li></ul><p>若第二个SELECT出现在UNION之后，则被标记为UNION;</p><p>  若UNION包含在FROM子句的子查询中,外层SELECT将被标记为DERIVED</p><ul><li>UNION RESULT</li></ul><p>从UNION表获取结果的SELECT,通俗的讲就是使用了union联合查询之后的结果</p><h3 id="type"><a href="#type" class="headerlink" title="type *"></a>type *</h3><p>system&gt;const&gt;eq_ref&gt;fulltext&gt;ref_or_null&gt;index_merge&gt;unique_subquery&gt;index_subquery&gt;reange&gt;index&gt;all</p><ul><li>system</li></ul><p>表只有一行记录(等于系统表),这是const类型的特例,平时不会出现,可以忽略不计</p><ul><li>const</li></ul><p>表示通过索引一次就找到了,const用于比较primary key或者unque索引,因为只匹配一行数据,所以很快,例如将主键作为where的查询条件,MySQL将会将该查询转换为一个常量</p><p><strong>举例</strong> 此时t1表中只有一个id为1的行</p><blockquote><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">select * from t1 where id=1;</span><br></pre></td></tr></table></figure></blockquote><ul><li>eq_ref</li></ul><p>唯一性索引扫描,对于每个索引键,表中只有一条记录与之匹配,常见于主键或唯一索引扫描</p><p><strong>举例</strong> 在匹配时,t2表中只有一条记录,且这条记录刚好与t1.id匹配</p><blockquote><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">explain select * from t1,t2 where t1.id=t2.id;</span><br></pre></td></tr></table></figure></blockquote><ul><li>ref</li></ul><p>非唯一性扫描,返回匹配某个单独值的所有行,本质上也是一种索引访问,它返回的是所有匹配某个单独值的行,然而,它可能会找到多个符合条件的行,所以它应该数据查找和扫描的混合体</p><ul><li>index_merge</li></ul><p>合并索引, 例如当查询条件使用了<code>or</code>, 且or的两边都是索引, 这个时候就会出现index_merge</p><ul><li>ref_or_null</li></ul><p>对于某个字段即需要关联条件, 也需要null值的情况下</p><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">where t.id=null or t.id=1;</span><br></pre></td></tr></table></figure><ul><li>index_subquery</li></ul><p>利用索引来关联子查询, 不在全表扫描, 即子查询用到了索引</p><ul><li>unique_subquery</li></ul><p>子查询中的唯一索引</p><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">explain select * </span><br><span class="line">from t</span><br><span class="line">where t.id in (</span><br><span class="line">select t.id from t  # id是主键, 全局唯一</span><br><span class="line">)</span><br></pre></td></tr></table></figure><ul><li>&#x3D;&#x3D;range&#x3D;&#x3D; 可能需要优化</li></ul><p>一般是使用了<code>between,&lt;,&gt;,in</code>等查询</p><ul><li>&#x3D;&#x3D;index&#x3D;&#x3D; 可能需要优化</li></ul><p>表示SQL语句使用了索引,但是没有用过索引进行过滤(即where或having后面没有使用索引), 一般是覆盖索引或者是利用索引进行了排序分组</p><ul><li>&#x3D;&#x3D;all&#x3D;&#x3D; 可能需要优化</li></ul><p>表示遍历了整张表, 当出现all时, 表示可能需要建立索引了 </p><h3 id="possible-keys"><a href="#possible-keys" class="headerlink" title="possible keys"></a>possible keys</h3><p>可以使用的索引</p><h3 id="key"><a href="#key" class="headerlink" title="key"></a>key</h3><p>实际使用的索引, 如果为<code>null</code>, 则没有使用索引 </p><h3 id="key-len"><a href="#key-len" class="headerlink" title="key_len *"></a>key_len *</h3><p>表示<strong>where 条件中</strong>使用到索引的字节数, 可以通过该列计算查询中使用的索引的长度, 可以帮我们检查是否充分利用了索引</p><p>理论上key_len的数值越大越好, 比如使用了相同的复合索引, key_len的值越大, 说明命中的索引越多</p><h3 id="rows"><a href="#rows" class="headerlink" title="rows *"></a>rows *</h3><p>执行SQL语句实际扫描的行数, 越小越好</p><h3 id="ref"><a href="#ref" class="headerlink" title="ref"></a>ref</h3><p>显示索引的哪一行被使用了, 如果可能的话, 是一个常数, 通常作用不大</p><h3 id="filtered"><a href="#filtered" class="headerlink" title="filtered"></a>filtered</h3><p>表示存储引擎返回的数据在server层过滤后, 剩下多少满足查询的记录数量的比例(百分比), 作用不大</p><h3 id="Extra"><a href="#Extra" class="headerlink" title="Extra *"></a>Extra *</h3><p> 包含不适合在其他列中显示但是十分重要的额外信息</p><ul><li>&#x3D;&#x3D;using filesort&#x3D;&#x3D;</li></ul><p>没有使用索引排序, 这种情况下效率较慢, 即<code>order by</code> 后面没有使用索引</p><ul><li>&#x3D;&#x3D;using temporary&#x3D;&#x3D;</li></ul><p><code>group by</code> 没有使用索引, 因为group by 的机制是先进行排序, 后进行分组, 所以这里如果不使用索引, 会极大的消耗性能</p><ul><li>&#x3D;&#x3D;using join buffer&#x3D;&#x3D;</li></ul><p>关联查询时, 关联字段(<code>on</code>)没有用到索引</p><ul><li>impossible where</li></ul><p> sql 逻辑出现错误, 比如: 大于201且小于10</p><ul><li>using index</li></ul><p>表示相应的select操作中使用了覆盖索引(covering Index), 避免了访问了表的数据行, 效率高!</p><ul><li>using where</li></ul><p>表名使用了where过滤</p><ul><li>select tables optimized away</li></ul><p>用到了优化器</p>]]></content>
-      
-      
-      <categories>
-          
-          <category> databases </category>
-          
-          <category> mysql </category>
+          <category> MySQL </category>
           
       </categories>
       
@@ -223,9 +202,9 @@
       
       <categories>
           
-          <category> databases </category>
+          <category> Databases </category>
           
-          <category> mysql </category>
+          <category> MySQL </category>
           
       </categories>
       
@@ -244,9 +223,9 @@
       
       <categories>
           
-          <category> databases </category>
+          <category> Databases </category>
           
-          <category> mysql </category>
+          <category> MySQL </category>
           
       </categories>
       
@@ -265,9 +244,9 @@
       
       <categories>
           
-          <category> databases </category>
+          <category> Databases </category>
           
-          <category> mysql </category>
+          <category> MySQL </category>
           
       </categories>
       
@@ -286,9 +265,9 @@
       
       <categories>
           
-          <category> databases </category>
+          <category> Databases </category>
           
-          <category> mysql </category>
+          <category> MySQL </category>
           
       </categories>
       
@@ -307,9 +286,9 @@
       
       <categories>
           
-          <category> databases </category>
+          <category> Databases </category>
           
-          <category> mysql </category>
+          <category> MySQL </category>
           
       </categories>
       
@@ -328,9 +307,9 @@
       
       <categories>
           
-          <category> databases </category>
+          <category> Databases </category>
           
-          <category> mysql </category>
+          <category> MySQL </category>
           
       </categories>
       
@@ -349,9 +328,9 @@
       
       <categories>
           
-          <category> databases </category>
+          <category> Databases </category>
           
-          <category> mysql </category>
+          <category> MySQL </category>
           
       </categories>
       
@@ -370,9 +349,9 @@
       
       <categories>
           
-          <category> databases </category>
+          <category> Databases </category>
           
-          <category> mysql </category>
+          <category> MySQL </category>
           
       </categories>
       
@@ -391,9 +370,9 @@
       
       <categories>
           
-          <category> databases </category>
+          <category> Databases </category>
           
-          <category> mysql </category>
+          <category> MySQL </category>
           
       </categories>
       
@@ -412,9 +391,9 @@
       
       <categories>
           
-          <category> databases </category>
+          <category> Databases </category>
           
-          <category> mysql </category>
+          <category> MySQL </category>
           
       </categories>
       
@@ -433,9 +412,9 @@
       
       <categories>
           
-          <category> databases </category>
+          <category> Databases </category>
           
-          <category> mysql </category>
+          <category> MySQL </category>
           
       </categories>
       
@@ -454,9 +433,9 @@
       
       <categories>
           
-          <category> databases </category>
+          <category> Databases </category>
           
-          <category> mysql </category>
+          <category> MySQL </category>
           
       </categories>
       
@@ -475,9 +454,9 @@
       
       <categories>
           
-          <category> databases </category>
+          <category> Databases </category>
           
-          <category> mysql </category>
+          <category> MySQL </category>
           
       </categories>
       
@@ -496,9 +475,9 @@
       
       <categories>
           
-          <category> databases </category>
+          <category> Databases </category>
           
-          <category> mysql </category>
+          <category> MySQL </category>
           
       </categories>
       
@@ -517,9 +496,9 @@
       
       <categories>
           
-          <category> databases </category>
+          <category> Databases </category>
           
-          <category> mysql </category>
+          <category> MySQL </category>
           
       </categories>
       
@@ -538,9 +517,9 @@
       
       <categories>
           
-          <category> databases </category>
+          <category> Databases </category>
           
-          <category> mysql </category>
+          <category> MySQL </category>
           
       </categories>
       
@@ -559,9 +538,9 @@
       
       <categories>
           
-          <category> databases </category>
+          <category> Databases </category>
           
-          <category> mysql </category>
+          <category> MySQL </category>
           
       </categories>
       
@@ -580,9 +559,9 @@
       
       <categories>
           
-          <category> databases </category>
+          <category> Databases </category>
           
-          <category> mysql </category>
+          <category> MySQL </category>
           
       </categories>
       
@@ -601,9 +580,9 @@
       
       <categories>
           
-          <category> databases </category>
+          <category> Databases </category>
           
-          <category> mysql </category>
+          <category> MySQL </category>
           
       </categories>
       
@@ -622,9 +601,9 @@
       
       <categories>
           
-          <category> databases </category>
+          <category> Databases </category>
           
-          <category> mysql </category>
+          <category> MySQL </category>
           
       </categories>
       
@@ -643,9 +622,9 @@
       
       <categories>
           
-          <category> databases </category>
+          <category> Databases </category>
           
-          <category> mysql </category>
+          <category> MySQL </category>
           
       </categories>
       
@@ -664,9 +643,9 @@
       
       <categories>
           
-          <category> databases </category>
+          <category> Databases </category>
           
-          <category> mysql </category>
+          <category> MySQL </category>
           
       </categories>
       
@@ -685,9 +664,9 @@
       
       <categories>
           
-          <category> databases </category>
+          <category> Databases </category>
           
-          <category> mysql </category>
+          <category> MySQL </category>
           
       </categories>
       
@@ -706,9 +685,9 @@
       
       <categories>
           
-          <category> databases </category>
+          <category> Databases </category>
           
-          <category> mysql </category>
+          <category> MySQL </category>
           
       </categories>
       
